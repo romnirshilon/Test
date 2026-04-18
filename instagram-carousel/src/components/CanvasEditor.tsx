@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { fabric } from 'fabric';
 import { useCarouselStore } from '../store/carouselStore';
+import { applyTemplate } from '../utils/templateEngine';
 import type { SlideBackground } from '../types';
 
 interface Props {
@@ -77,16 +78,26 @@ export default function CanvasEditor({ slideId, width, height, onCanvasReady }: 
     });
     fabricRef.current = canvas;
 
-    if (slide?.canvasJson) {
+    const afterSetup = () => {
+      canvas.renderAll();
+      onCanvasReady?.(canvas);
+      // Slight delay to let canvas render before saving thumbnail
+      setTimeout(saveState, 300);
+    };
+
+    if (slide?.generationData) {
+      // Auto-generated slide: apply template
+      const { content, design, totalSlides } = slide.generationData;
+      applyTemplate(canvas, content, design, totalSlides, width, height);
+      afterSetup();
+    } else if (slide?.canvasJson) {
       canvas.loadFromJSON(slide.canvasJson, () => {
         if (slide?.background) applyBg(canvas, slide.background);
-        canvas.renderAll();
-        onCanvasReady?.(canvas);
+        afterSetup();
       });
     } else {
       if (slide?.background) applyBg(canvas, slide.background);
-      canvas.renderAll();
-      onCanvasReady?.(canvas);
+      afterSetup();
     }
 
     canvas.on('object:modified', saveState);
@@ -103,9 +114,10 @@ export default function CanvasEditor({ slideId, width, height, onCanvasReady }: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slideId, width, height]);
 
+  // React to live background changes (only when not generated)
   useEffect(() => {
     const canvas = fabricRef.current;
-    if (!canvas || !slide?.background) return;
+    if (!canvas || !slide?.background || slide.generationData) return;
     applyBg(canvas, slide.background);
     setTimeout(saveState, 200);
     // eslint-disable-next-line react-hooks/exhaustive-deps

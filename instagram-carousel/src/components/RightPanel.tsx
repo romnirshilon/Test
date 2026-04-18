@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import BackgroundPanel from './BackgroundPanel';
 import CanvaImport from './CanvaImport';
-import { Palette, Import } from 'lucide-react';
+import GeneratorWizard from './GeneratorWizard';
+import { Palette, Import, Sparkles } from 'lucide-react';
 import clsx from 'clsx';
 
 const TABS = [
-  { id: 'background', label: 'Background', icon: Palette },
-  { id: 'canva', label: 'Canva', icon: Import },
+  { id: 'generate',   label: 'Generate', icon: Sparkles },
+  { id: 'background', label: 'Style',    icon: Palette },
+  { id: 'canva',      label: 'Canva',    icon: Import },
 ];
 
 export default function RightPanel() {
-  const [tab, setTab] = useState('background');
+  const [tab, setTab] = useState('generate');
 
   return (
     <div className="flex flex-col h-full bg-[#16161e] border-l border-white/10 w-72 min-w-[18rem]">
@@ -32,8 +34,9 @@ export default function RightPanel() {
         ))}
       </div>
       <div className="flex-1 overflow-y-auto slide-thumb p-4">
+        {tab === 'generate'   && <GeneratorWizard />}
         {tab === 'background' && <BackgroundPanel />}
-        {tab === 'canva' && <CanvaImport />}
+        {tab === 'canva'      && <CanvaImport />}
       </div>
     </div>
   );

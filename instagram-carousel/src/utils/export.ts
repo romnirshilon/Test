@@ -7,13 +7,22 @@ export async function downloadSlideAsPng(dataUrl: string, filename: string) {
   saveAs(blob, filename);
 }
 
-export async function downloadAllSlides(dataUrls: string[], projectName = 'carousel') {
+/**
+ * Downloads all slides as a ZIP file.
+ * Slides are named by the provided filenames array (already ordered).
+ */
+export async function downloadAllSlides(
+  dataUrls: string[],
+  projectName = 'carousel',
+  filenames?: string[]
+) {
   const zip = new JSZip();
   await Promise.all(
     dataUrls.map(async (url, i) => {
       const res = await fetch(url);
       const blob = await res.blob();
-      zip.file(`${projectName}-slide-${i + 1}.png`, blob);
+      const name = filenames?.[i] ?? `${projectName}-${String(i + 1).padStart(2, '0')}.png`;
+      zip.file(name, blob);
     })
   );
   const content = await zip.generateAsync({ type: 'blob' });

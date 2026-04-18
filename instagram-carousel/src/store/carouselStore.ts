@@ -36,6 +36,7 @@ interface CarouselStore extends CarouselState {
   updateSlideCanvas: (id: string, json: string) => void;
   updateSlideThumbnail: (id: string, thumbnail: string) => void;
   setAspectRatio: (ratio: CarouselState['aspectRatio']) => void;
+  setSlides: (slides: Slide[]) => void;
 }
 
 const initialSlide = createSlide();
@@ -106,4 +107,7 @@ export const useCarouselStore = create<CarouselStore>((set) => ({
     })),
 
   setAspectRatio: (ratio) => set({ aspectRatio: ratio }),
+
+  setSlides: (slides) =>
+    set({ slides, activeSlideId: slides[0]?.id ?? null }),
 }));
