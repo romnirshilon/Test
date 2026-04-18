@@ -53,7 +53,8 @@ function applyBg(canvas: fabric.Canvas, bg: SlideBackground) {
 }
 
 export default function CanvasEditor({ slideId, width, height, onCanvasReady }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  // React owns this div — Fabric.js owns the <canvas> it creates inside
+  const containerRef = useRef<HTMLDivElement>(null);
   const fabricRef = useRef<fabric.Canvas | null>(null);
   const slide = useCarouselStore((s) => s.slides.find((sl) => sl.id === slideId));
   const updateCanvas = useCarouselStore((s) => s.updateSlideCanvas);
@@ -69,8 +70,13 @@ export default function CanvasEditor({ slideId, width, height, onCanvasReady }: 
   }, [slideId, updateCanvas, updateThumbnail]);
 
   useEffect(() => {
-    if (!canvasRef.current) return;
-    const canvas = new fabric.Canvas(canvasRef.current, {
+    if (!containerRef.current) return;
+
+    // Create a raw <canvas> element — NOT managed by React — and hand it to Fabric
+    const canvasEl = document.createElement('canvas');
+    containerRef.current.appendChild(canvasEl);
+
+    const canvas = new fabric.Canvas(canvasEl, {
       width,
       height,
       selection: true,
@@ -81,14 +87,16 @@ export default function CanvasEditor({ slideId, width, height, onCanvasReady }: 
     const afterSetup = () => {
       canvas.renderAll();
       onCanvasReady?.(canvas);
-      // Slight delay to let canvas render before saving thumbnail
       setTimeout(saveState, 300);
     };
 
     if (slide?.generationData) {
-      // Auto-generated slide: apply template
       const { content, design, totalSlides } = slide.generationData;
-      applyTemplate(canvas, content, design, totalSlides, width, height);
+      try {
+        applyTemplate(canvas, content, design, totalSlides, width, height);
+      } catch (err) {
+        console.error('Template render error:', err);
+      }
       afterSetup();
     } else if (slide?.canvasJson) {
       canvas.loadFromJSON(slide.canvasJson, () => {
@@ -108,13 +116,14 @@ export default function CanvasEditor({ slideId, width, height, onCanvasReady }: 
       canvas.off('object:modified', saveState);
       canvas.off('object:added', saveState);
       canvas.off('object:removed', saveState);
+      // dispose() removes Fabric's wrapper from containerRef — React keeps its div
       canvas.dispose();
       fabricRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slideId, width, height]);
 
-  // React to live background changes (only when not generated)
+  // React to live background changes
   useEffect(() => {
     const canvas = fabricRef.current;
     if (!canvas || !slide?.background || slide.generationData) return;
@@ -124,9 +133,15 @@ export default function CanvasEditor({ slideId, width, height, onCanvasReady }: 
   }, [slide?.background]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      style={{ borderRadius: '8px', boxShadow: '0 8px 40px rgba(0,0,0,0.5)' }}
+    <div
+      ref={containerRef}
+      style={{
+        width,
+        height,
+        borderRadius: '8px',
+        boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
+        overflow: 'hidden',
+      }}
     />
   );
 }
